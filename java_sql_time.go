@@ -90,10 +90,12 @@ func (JavaSqlTimeSerializer) EncObject(e *Encoder, vv POJO) error {
 		if !ok {
 			idx = RegisterPOJO(v)
 		}
-		_, clsDef, err = getStructDefByIndex(idx)
+		var clsDefList []*classInfo
+		_, clsDefList, err = getStructDefByIndex(idx)
 		if err != nil {
 			return perrors.WithStack(err)
 		}
+		clsDef = clsDefList[0]
 		idx = len(e.classInfoList)
 		e.classInfoList = append(e.classInfoList, clsDef)
 		e.buffer = append(e.buffer, clsDef.buffer...)

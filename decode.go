@@ -36,6 +36,7 @@ type Decoder struct {
 	typeRefs      *TypeRefs
 	classInfoList []*classInfo
 	isSkip        bool
+	respBody      interface{}
 }
 
 // Error part
@@ -160,6 +161,10 @@ func (d *Decoder) nextRune(s []rune) []rune {
 	return s
 }
 
+func (d *Decoder) SetRespBody(respBody interface{}) {
+	d.respBody = respBody
+}
+
 // read the type of data, used to decode list or map
 func (d *Decoder) decMapType() (reflect.Type, error) {
 	var (
@@ -184,7 +189,11 @@ func (d *Decoder) decMapType() (reflect.Type, error) {
 			return nil, perrors.WithStack(err)
 		}
 
-		info, ok := getStructInfo(typName)
+		var info *structInfo
+		infos, ok := getStructInfo(typName)
+		if infos != nil && len(infos) > 0 {
+			info = infos[0]
+		}
 		if ok {
 			typ = info.typ
 		} else {

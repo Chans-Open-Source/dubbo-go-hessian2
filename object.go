@@ -152,11 +152,12 @@ func (e *Encoder) encObject(v interface{}) error {
 				return perrors.Errorf("non-pojo obj %s has not being registered before!", typeof(v))
 			}
 		}
-		_, clsDef, err = getStructDefByIndex(idx)
+		var clsDefList []*classInfo
+		_, clsDefList, err = getStructDefByIndex(idx)
 		if err != nil {
 			return perrors.WithStack(err)
 		}
-
+		clsDef = clsDefList[0]
 		idx = len(e.classInfoList)
 		e.classInfoList = append(e.classInfoList, clsDef)
 		e.buffer = append(e.buffer, clsDef.buffer...)
@@ -560,17 +561,18 @@ func (d *Decoder) appendClsDef(cd *classInfo) {
 
 func (d *Decoder) getStructDefByIndex(idx int) (reflect.Type, *classInfo, error) {
 	var (
-		ok  bool
-		cls *classInfo
-		s   *structInfo
-		err error
+		ok    bool
+		cls   *classInfo
+		s     *structInfo
+		sList []*structInfo
+		err   error
 	)
 
 	if len(d.classInfoList) <= idx || idx < 0 {
 		return nil, cls, perrors.Errorf("illegal class index @idx %d", idx)
 	}
 	cls = d.classInfoList[idx]
-	s, ok = getStructInfo(cls.javaName)
+	sList, ok = getStructInfo(cls.javaName)
 	if !ok {
 		// exception
 		if s, ok = checkAndGetException(cls); ok {
@@ -580,6 +582,17 @@ func (d *Decoder) getStructDefByIndex(idx int) (reflect.Type, *classInfo, error)
 			err = perrors.Errorf("can not find go type name %s in registry", cls.javaName)
 		}
 		return nil, cls, err
+	}
+	if d.respBody != nil {
+		targetGoType := UnpackPtrType(reflect.TypeOf(d.respBody))
+		targetGoName := targetGoType.PkgPath() + "/" + targetGoType.String()
+		for _, s = range sList {
+			if s.goName == targetGoName {
+				break
+			}
+		}
+	} else {
+		s = sList[0]
 	}
 
 	return s.typ, cls, nil
@@ -591,15 +604,27 @@ func (d *Decoder) decEnum(javaName string, flag int32) (JavaEnum, error) {
 		enumName  string
 		ok        bool
 		info      *structInfo
+		sList     []*structInfo
 		enumValue JavaEnum
 	)
 	enumName, err = d.decString(TAG_READ) // java enum class member is "name"
 	if err != nil {
 		return InvalidJavaEnum, perrors.Wrap(err, "decString for decJavaEnum")
 	}
-	info, ok = getStructInfo(javaName)
+	sList, ok = getStructInfo(javaName)
 	if !ok {
 		return InvalidJavaEnum, perrors.Errorf("getStructInfo(javaName:%s) = false", javaName)
+	}
+	if d.respBody != nil {
+		targetGoType := UnpackPtrType(reflect.TypeOf(d.respBody))
+		targetGoName := targetGoType.PkgPath() + "/" + targetGoType.String()
+		for _, info = range sList {
+			if info.goName == targetGoName {
+				break
+			}
+		}
+	} else {
+		info = sList[0]
 	}
 
 	enumValue = info.inst.(POJOEnum).EnumValue(enumName)

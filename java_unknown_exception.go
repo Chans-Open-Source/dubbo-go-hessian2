@@ -33,8 +33,9 @@ func checkAndGetException(cls *classInfo) (*structInfo, bool) {
 		return nil, false
 	}
 	var (
-		throwable *structInfo
-		ok        bool
+		throwable     *structInfo
+		throwableList []*structInfo
+		ok            bool
 	)
 	count := 0
 	for _, item := range cls.fieldNameList {
@@ -46,13 +47,16 @@ func checkAndGetException(cls *classInfo) (*structInfo, bool) {
 	if count == 4 {
 		exceptionCheckMutex.Lock()
 		defer exceptionCheckMutex.Unlock()
-		if throwable, ok = getStructInfo(cls.javaName); ok {
-			return throwable, true
+		if throwableList, ok = getStructInfo(cls.javaName); ok {
+			return throwableList[0], true
 		}
 		RegisterPOJO(newBizException(cls.javaName))
-		if throwable, ok = getStructInfo(cls.javaName); ok {
-			return throwable, true
+		if throwableList, ok = getStructInfo(cls.javaName); ok {
+			return throwableList[0], true
 		}
+	}
+	if len(throwableList) > 0 {
+		throwable = throwableList[0]
 	}
 	return throwable, count == 4
 }

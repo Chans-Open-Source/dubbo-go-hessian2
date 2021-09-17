@@ -114,7 +114,11 @@ func getListType(javalistname string) reflect.Type {
 	}
 
 	if sliceTy == nil {
-		tpStructInfo, _ := getStructInfo(javaname)
+		var tpStructInfo *structInfo
+		tpStructInfos, _ := getStructInfo(javaname)
+		if tpStructInfos != nil && len(tpStructInfos) > 0 {
+			tpStructInfo = tpStructInfos[0]
+		}
 		if tpStructInfo == nil || tpStructInfo.typ == nil {
 			return nil
 		}
